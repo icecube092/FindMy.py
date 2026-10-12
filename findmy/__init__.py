@@ -11,6 +11,7 @@ from .accessory import (
 )
 from .errors import (
     AppleServiceUnavailableError,
+    GrandSlamRefusedError,
     InvalidCredentialsError,
     InvalidStateError,
     MobileMeDelegateError,
@@ -64,6 +65,7 @@ __all__ = (
     "FindMyAccessoryMapping",
     "FixedRollingKeyPairAccessory",
     "FixedRollingKeyPairAccessoryMapping",
+    "GrandSlamRefusedError",
     "HasHashedPublicKey",
     "HasPublicKey",
     "InvalidCredentialsError",

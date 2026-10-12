@@ -31,6 +31,7 @@ from findmy import util
 from findmy.errors import (
     AppleServiceUnavailableError,
     EmptyResponseError,
+    GrandSlamRefusedError,
     InvalidCredentialsError,
     InvalidStateError,
     MobileMeDelegateError,
@@ -1488,8 +1489,8 @@ class AsyncAppleAccount(BaseAppleAccount):
         logger.debug("Verifying response to auth request")
 
         if r["Status"].get("ec") != 0:
-            msg = "Email verification failed: " + r["Status"].get("em")
-            raise InvalidCredentialsError(msg)
+            step = "init"
+            raise GrandSlamRefusedError(step, r["Status"].get("ec"), r["Status"].get("em"))
         sp = r.get("sp")
         if not isinstance(sp, str) or sp not in {"s2k", "s2k_fo"}:
             msg = f"This implementation only supports s2k and sk2_fo. Server returned {sp}"
@@ -1509,8 +1510,8 @@ class AsyncAppleAccount(BaseAppleAccount):
         logger.debug("Verifying password challenge response")
 
         if r["Status"].get("ec") != 0:
-            msg = "Password authentication failed: " + r["Status"].get("em")
-            raise InvalidCredentialsError(msg)
+            step = "complete"
+            raise GrandSlamRefusedError(step, r["Status"].get("ec"), r["Status"].get("em"))
         usr.verify_session(r.get("M2"))
         if not usr.authenticated():
             msg = "Failed to verify session"
