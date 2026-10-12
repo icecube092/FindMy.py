@@ -15,6 +15,53 @@ class InvalidCredentialsError(Exception):
     """Raised when credentials are incorrect."""
 
 
+class GrandSlamRefusedError(InvalidCredentialsError):
+    """
+    Raised when Grand Slam answers a step of the SRP sign-in with a non-zero ``ec``.
+
+    **Which step refused is the useful part, because only one of them involves the password.**
+    ``init`` carries the username and the Anisette headers and nothing else; a refusal there
+    is Apple declining the account or the machine identity before any password is checked.
+    ``complete`` is where a wrong password is reported. Both used to arrive as a bare
+    ``InvalidCredentialsError`` with only Apple's English text, so an application could not
+    tell "you typed it wrong" from "Apple would not start" without matching prose.
+
+    ``ec`` is kept for the same reason. It is Apple's own reason code, and the ``em`` text
+    beside it is generic enough ("This action cannot be completed at this time") that the code
+    is the only thing distinguishing one refusal from another in a report. It used to be
+    dropped -- OpenTagViewer#248 arrived with the text and nothing else.
+
+    A subclass of ``InvalidCredentialsError`` on purpose, so every existing ``except`` clause
+    keeps catching it and nothing downstream changes behaviour by upgrading.
+
+    :param step: the SRP step that was refused, ``"init"`` or ``"complete"``.
+    :param ec: the ``Status.ec`` Apple returned, as sent.
+    :param em: the ``Status.em`` Apple returned, or None when it sent none.
+    """
+
+    def __init__(self, step: str, ec: object, em: str | None) -> None:
+        """Record what Apple said at which step, then compose the message."""
+        self.step = step
+        self.ec = ec
+        self.em = em
+
+        # The prefixes are the ones these failures always had, so a log searched for the old
+        # text still finds them.
+        what = "Email verification failed" if step == "init" else "Password authentication failed"
+        super().__init__(f"{what} (ec={ec}): {em or 'no message'}")
+
+    @property
+    def before_password(self) -> bool:
+        """
+        Whether Apple refused before the password was used at all.
+
+        **True means the password is not the problem**, so telling the user to retype it
+        sends them the wrong way. What is left is the account itself, or the machine identity
+        the Anisette data presents.
+        """
+        return self.step == "init"
+
+
 class UnauthorizedError(Exception):
     """Raised when an authorization error occurs."""
 
