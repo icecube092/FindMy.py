@@ -8,6 +8,7 @@ import io
 import json
 import locale
 import logging
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -215,6 +216,37 @@ Deliberately implausible as a real serial: nothing should mistake it for hardwar
 """
 
 
+
+
+_CLIENT_INFO_RE = re.compile(r"^<([^>]+)>\s*<([^;>]+);([^;>]+);([^>]+)>")
+_USER_AGENT_RE = re.compile(r"CFNetwork/(\S+)\s+Darwin/(\S+)")
+
+
+def _identity_from_session(client_info: str, user_agent: str) -> DeviceIdentity | None:
+    """Rebuild a :class:`DeviceIdentity` from what an ADI session says it is.
+
+    The macOS ADI backend mints its machine id as a particular Mac on a particular
+    release, and names that machine in its own client info. Everything this library
+    sends beside those headers has to describe the same machine -- Apple checks, and
+    answers a contradiction with a refusal that names neither header (`-80045` at Grand
+    Slam, `-3001` at the escrow proxy). Returns None if either string is shaped
+    unexpectedly, so a caller can keep its configured identity rather than a half-parsed
+    one.
+    """
+    info = _CLIENT_INFO_RE.match(client_info or "")
+    agent = _USER_AGENT_RE.search(user_agent or "")
+    if info is None or agent is None:
+        return None
+    model, os_name, os_version, os_build = (g.strip() for g in info.groups())
+    cfnetwork, darwin = agent.groups()
+    return DeviceIdentity(
+        model=model,
+        os_name=os_name,
+        os_version=os_version,
+        os_build=os_build,
+        cfnetwork=cfnetwork,
+        darwin=darwin,
+    )
 
 class RemoteAnisetteMapping(TypedDict, total=False):
     """JSON mapping representing state of a remote Anisette provider."""
@@ -840,6 +872,26 @@ class LocalAnisetteProvider(BaseAnisetteProvider, util.abc.Serializable[LocalAni
     def client(self) -> str:
         """Use the client identity supplied by the local Anisette session."""
         return (self._ani_data or {}).get("X-MMe-Client-Info", super().client)
+
+    @property
+    @override
+    def identity(self) -> DeviceIdentity:
+        """The machine the local ADI session was minted as.
+
+        Overridden because that is a different machine than the one this provider was
+        constructed with: the macOS backend names its own Mac and release, and the two
+        have to agree in every header that mentions either. Consumers that compose from
+        the identity directly -- the escrow proxy and CloudKit among them -- follow this
+        without knowing where it came from.
+        """
+        device = getattr(self._ani, "device", None)
+        if device is None:
+            return super().identity
+        parsed = _identity_from_session(
+            getattr(device, "client_info", "") or "",
+            getattr(device, "user_agent", "") or "",
+        )
+        return parsed or super().identity
 
     @property
     @override

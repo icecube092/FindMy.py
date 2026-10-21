@@ -280,3 +280,42 @@ def test_current_anisette_api_and_state_round_trip() -> None:
         ),
     ):
         asyncio.run(run())
+
+
+def test_identity_follows_the_local_anisette_session() -> None:
+    """Take the machine from the ADI session, not from the constructor.
+
+    The escrow proxy and CloudKit compose their headers from `account.identity` rather
+    than from the provider's `client`, so an override that only reached `client` would
+    leave those two describing a different Mac than the machine id beside them. Apple
+    answers that with -3001 at the escrow proxy, naming neither header.
+    """
+    provider = anisette_report.LocalAnisetteProvider()
+    provider._ani = SimpleNamespace(  # noqa: SLF001
+        device=SimpleNamespace(
+            client_info="<MacBookPro16,2> <macOS;26.0;25A354> <com.apple.AuthKit/1 (com.apple.akd/1.0)>",
+            user_agent="akd/1.0 CFNetwork/3860.100.1 Darwin/25.0.0",
+        ),
+    )
+
+    identity = provider.identity
+
+    assert identity.model == "MacBookPro16,2"
+    assert identity.os_name == "macOS"
+    assert identity.os_version == "26.0"
+    assert identity.os_build == "25A354"
+    assert identity.cfnetwork == "3860.100.1"
+    assert identity.darwin == "25.0.0"
+    # The composites every consumer builds from it follow without further wiring.
+    assert identity.client_info("com.apple.lakitu") == (
+        "<MacBookPro16,2> <macOS;26.0;25A354> <com.apple.lakitu>"
+    )
+    assert identity.user_agent("sbd/1.0") == "sbd/1.0 CFNetwork/3860.100.1 Darwin/25.0.0"
+
+
+def test_identity_keeps_the_configured_one_when_the_session_is_unreadable() -> None:
+    """A half-parsed identity would be worse than the configured one."""
+    provider = anisette_report.LocalAnisetteProvider()
+    provider._ani = SimpleNamespace(device=SimpleNamespace(client_info="nonsense", user_agent=""))  # noqa: SLF001
+
+    assert provider.identity == anisette_report.CLIENT_IDENTITY
