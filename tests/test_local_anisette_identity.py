@@ -69,6 +69,10 @@ class _ImmediateAsyncio:
 
 class _FakeResponse:
     ok = True
+    # This fork, unlike upstream, reads the status: Apple's edge answers a client info it
+    # does not like with a 190-byte page and HTTP 503, and _gsa_request tells that from a
+    # plist (see _refused). The fake needs a status_code or it fails that check first.
+    status_code = 200
 
     def plist(self) -> dict[str, dict[str, Any]]:
         return {"Response": {}}

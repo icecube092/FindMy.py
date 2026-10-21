@@ -1586,8 +1586,10 @@ class AsyncAppleAccount(BaseAppleAccount):
 
         headers = {
             "X-Apple-ADSID": self._login_state_data["adsid"],
-            # Идентичность берётся у anisette-провайдера: с macOS-бэкендом client-info
-            # приходит из самой сессии ADI, и собственный DeviceIdentity его не отражает.
+            # From the Anisette provider rather than this account's own identity: the
+            # macOS ADI backend names the platform its machine id was minted on, and a
+            # DeviceIdentity of our own does not describe it. Apple checks the two agree.
+            # See malmeloo/FindMy.py#278.
             "User-Agent": self._anisette.user_agent.replace(
                 "akd/1.0", "com.apple.iCloudHelper/282", 1
             ),

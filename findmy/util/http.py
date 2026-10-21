@@ -60,10 +60,6 @@ class _RequestOptions(TypedDict, total=False):
     data: bytes
 
 
-class _AiohttpRequestOptions(_RequestOptions):
-    auth: BasicAuth
-
-
 class _HttpRequestOptions(_RequestOptions, total=False):
     auth: BasicAuth | tuple[str, str]
 
@@ -171,7 +167,13 @@ class HttpSession(Closable):
         if urlsplit(url).hostname not in NO_CONNECTION_REUSE_HOSTS:
             if self._session is None:
                 logger.debug("Creating aiohttp session")
-                self._session = ClientSession(timeout=ClientTimeout(total=self._timeout))
+                # Stated rather than left to aiohttp, which would build the same thing:
+                # both sessions are then constructed alike, so a test can replace the
+                # connector of either with one patch.
+                self._session = ClientSession(
+                    timeout=ClientTimeout(total=self._timeout),
+                    connector=TCPConnector(force_close=False),
+                )
             return self._session
 
         if self._unpooled is None:
@@ -223,11 +225,27 @@ class HttpSession(Closable):
         """
         session = await self._get_session(url)
 
-        # cast from http options to library supported options
+        # Credentials go out as a header rather than through aiohttp's `auth=`, whose
+        # BasicAuth is deprecated and goes away in aiohttp 4.0. From
+        # malmeloo/FindMy.py#279.
         auth = kwargs.pop("auth", None)
-        if isinstance(auth, tuple):
-            kwargs["auth"] = BasicAuth(auth[0], auth[1])
-        options = cast("_AiohttpRequestOptions", kwargs)
+        if auth is not None:
+            headers = dict(kwargs.get("headers", {}))
+            if any(name.lower() == "authorization" for name in headers):
+                msg = "Cannot combine auth with an Authorization header"
+                raise ValueError(msg)
+            if isinstance(auth, tuple):
+                encoder = getattr(aiohttp, "encode_basic_auth", None)
+                authorization = (
+                    encoder(*auth, encoding="latin1")
+                    if encoder is not None
+                    else BasicAuth(*auth).encode()
+                )
+            else:
+                authorization = auth.encode()
+            headers["Authorization"] = authorization
+            kwargs["headers"] = headers
+        options = cast("_RequestOptions", kwargs)
 
         auto_retry = kwargs.pop("auto_retry", False)
 

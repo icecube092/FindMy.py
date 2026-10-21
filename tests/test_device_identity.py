@@ -127,10 +127,14 @@ def test_the_mobileme_login_composes_both_of_its_headers() -> None:
     """Test that the mobileme login no longer writes the identity out by hand."""
     # It used to carry its own copy of the platform triple and its own CFNetwork/Darwin
     # pair -- a second identity that would diverge the moment either was edited.
+    # The source of the identity moved from self.identity to the Anisette provider: the
+    # macOS ADI backend names the platform, and Apple checks the client info matches it
+    # (malmeloo/FindMy.py#278, #279). What this asserts is unchanged: nothing written
+    # out by hand.
     source = inspect.getsource(AsyncAppleAccount._login_mobileme)  # noqa: SLF001
 
-    assert "self.identity.user_agent(" in source
-    assert "self.identity.client_info(" in source
+    assert "self._anisette.user_agent" in source
+    assert "self._anisette.get_client_info(" in source
     assert "MacBookPro18,3" not in source
     assert "Darwin/" not in source
 

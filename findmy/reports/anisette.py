@@ -409,8 +409,13 @@ class BaseAnisetteProvider(util.abc.Closable, util.abc.Serializable, ABC):
         that contradicts itself.
 
         Same platform as :attr:`client`, by construction rather than by transcription.
+
+        Derived from :attr:`client` rather than from the identity directly, so that a
+        provider whose platform comes from somewhere else -- the macOS ADI session, which
+        mints the machine id and names the platform it was minted on -- is followed here
+        too. Apple checks that the two agree; see malmeloo/FindMy.py#278.
         """
-        return self._identity.client_info(_AKD_BUNDLE)
+        return self.get_client_info(_AKD_BUNDLE)
 
     @property
     def akd_user_agent(self) -> str:
@@ -420,8 +425,11 @@ class BaseAnisetteProvider(util.abc.Closable, util.abc.Serializable, ABC):
         Built from the same identity, because the CFNetwork and Darwin versions have to
         describe the release the client info claims. A fixed string here is how a request
         ends up announcing macOS 10.14 and macOS 13.4.1 at once.
+
+        Delegates to :attr:`user_agent` for the same reason :attr:`client_akd` delegates
+        to :attr:`client`.
         """
-        return self._identity.user_agent("akd/1.0")
+        return self.user_agent
 
     def get_client_info(self, application: str) -> str:
         """Describe an application using the provider's Mac model and OS."""
@@ -429,8 +437,13 @@ class BaseAnisetteProvider(util.abc.Closable, util.abc.Serializable, ABC):
 
     @property
     def user_agent(self) -> str:
-        """User agent describing the provider's networking stack."""
-        return "akd/1.0 CFNetwork/1408.0.4 Darwin/22.5.0"
+        """
+        User agent describing the provider's networking stack.
+
+        Composed from the identity rather than written out, so it describes the same
+        release the client info claims.
+        """
+        return self._identity.user_agent("akd/1.0")
 
     async def get_headers(
         self,
