@@ -1384,8 +1384,19 @@ class AsyncAppleAccount(BaseAppleAccount):
             resp = r.json()
         except json.JSONDecodeError:
             resp = {}
-        if not r.ok or resp.get("acsnLocations", {}).get("statusCode") != "200":
-            msg = f"Failed to fetch reports: {resp.get('statusCode')}"
+        acsn_status = resp.get("acsnLocations", {}).get("statusCode")
+        if not r.ok or acsn_status != "200":
+            # Report the REAL cause. The old message printed resp["statusCode"], a key that
+            # never exists at the top level (the status is nested under acsnLocations), so it
+            # always read "None" regardless of what actually failed. Now it carries the HTTP
+            # status and the nested acsnLocations statusCode.
+            #
+            # No retry here on purpose: a soft-fail (transient non-2xx / acsnLocations != 200)
+            # is left for the caller to re-poll. The collector's scheduler already collects each
+            # account on a short interval, and the fetch window + source_hash dedup backfill any
+            # missed points idempotently on the next successful cycle, so retrying inside this
+            # one request would only add latency and hold a worker slot for no gain.
+            msg = f"Failed to fetch reports: http={r.status_code} acsn={acsn_status}"
             raise UnhandledProtocolError(msg)
 
         # parse reports
