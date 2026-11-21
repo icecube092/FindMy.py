@@ -1,8 +1,13 @@
+# Test doubles stand in for the real clients, accounts and sessions by shape, and tests read
+# back what they recorded, so these two checks would flag every injection.
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false
 """Tests for issuing a fresh PET from a logged-in account."""
 
 from __future__ import annotations
 
 import pytest
+
+from typing_extensions import override
 
 from findmy.errors import InvalidStateError, UnauthorizedError
 from findmy.reports.account import AsyncAppleAccount
@@ -93,20 +98,25 @@ def test_the_client_serial_reaches_the_header_that_names_it_in_the_device_list()
 
     class Provider(BaseAnisetteProvider):
         @property
+        @override
         def otp(self) -> str:
             return "otp"
 
         @property
+        @override
         def machine(self) -> str:
             return "machine"
 
+        @override
         async def close(self) -> None:
             return
 
+        @override
         def to_json(self, dst=None):  # noqa: ANN001, ANN202, ARG002
             return {}
 
         @classmethod
+        @override
         def from_json(cls, val):  # noqa: ANN001, ANN206, ARG003
             raise NotImplementedError
 
@@ -124,20 +134,25 @@ def _a_provider():
 
     class Provider(BaseAnisetteProvider):
         @property
+        @override
         def otp(self) -> str:
             return "otp"
 
         @property
+        @override
         def machine(self) -> str:
             return "machine"
 
+        @override
         async def close(self) -> None:
             return
 
+        @override
         def to_json(self, dst=None):  # noqa: ANN001, ANN202, ARG002
             return {"type": "aniRemote", "url": "https://a/"}
 
         @classmethod
+        @override
         def from_json(cls, val):  # noqa: ANN001, ANN206, ARG003
             raise NotImplementedError
 
@@ -197,7 +212,7 @@ def test_the_device_name_survives_being_saved_and_reloaded() -> None:
     account = AsyncAppleAccount(_a_provider(), device_name="OpenTagViewer App")
     state = account.to_json()
 
-    assert state["account"]["device_name"] == "OpenTagViewer App"
+    assert state["account"].get("device_name") == "OpenTagViewer App"
     assert AsyncAppleAccount(_a_provider(), state_info=state).device_name == "OpenTagViewer App"
 
 
@@ -329,7 +344,7 @@ def test_a_401_on_a_session_with_no_password_is_an_auth_error() -> None:
 
     from findmy.reports.account import AsyncAppleAccount  # noqa: PLC0415
     from findmy.reports.state import LoginState  # noqa: PLC0415
-    from tests.test_device_identity import a_provider  # noqa: PLC0415
+    from test_device_identity import a_provider  # noqa: PLC0415
 
     class Refused:
         status_code = 401

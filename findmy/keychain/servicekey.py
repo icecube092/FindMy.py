@@ -335,9 +335,7 @@ def _v2_payload(element: der.DerElement) -> bytes:
     )
     if payload is None:
         shapes = ", ".join(f"tag {c.tag_number}" for c in children)
-        msg = (
-            f"A v2 private key structure holds no octet string. It holds: {shapes or 'nothing'}"
-        )
+        msg = f"A v2 private key structure holds no octet string. It holds: {shapes or 'nothing'}"
         raise ServiceKeyError(msg)
 
     return payload.as_bytes()

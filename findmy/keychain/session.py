@@ -1056,4 +1056,3 @@ class JoinOutcome:
         point of being a member rather than a recoverer.
         """
         return self.directory.sync_token
-

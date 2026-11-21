@@ -88,10 +88,12 @@ def _account_answering_complete_with(status: dict[str, Any]) -> AsyncAppleAccoun
             "fn": "Some",
             "ln": "One",
         }
+        key = server.get_session_key()
+        assert key is not None
         return {
             "Status": dict(status),
             "M2": m2,
-            "spd": _encrypt_spd(server.get_session_key(), spd),
+            "spd": _encrypt_spd(key, spd),
         }
 
     account._gsa_request = answer  # type: ignore[method-assign]  # noqa: SLF001

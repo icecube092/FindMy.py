@@ -7,6 +7,8 @@ import ssl
 
 import pytest
 
+from typing_extensions import override
+
 from findmy.reports.anisette import RemoteAnisetteProvider
 from findmy.util.http import HttpSession
 from findmy.util.tls import (
@@ -62,8 +64,12 @@ def test_the_context_adds_apples_root_to_the_platforms_own() -> None:
 
     # Added *on top of* the defaults, not instead of them: adding a trust anchor does not
     # weaken the ones already there, and a context holding only Apple's root would refuse
-    # every other host this library talks to.
-    assert len(context.get_ca_certs()) > 1
+    # every other host this library talks to. Compared with a default context rather than
+    # counted: where the platform store is a directory (most Linux), OpenSSL reads it
+    # lazily and `get_ca_certs()` lists none of it, so the count is 1 on a correct context.
+    defaults = ssl.create_default_context()
+    assert _common_names(defaults) <= _common_names(context)
+    assert len(context.get_ca_certs()) >= len(defaults.get_ca_certs())
 
     assert context.verify_mode == ssl.CERT_REQUIRED
     assert context.check_hostname
@@ -107,7 +113,7 @@ def test_the_opt_in_reaches_the_session_and_survives_a_round_trip() -> None:
     assert provider._http._ssl is False  # noqa: SLF001
 
     state = provider.to_json()
-    assert state["allow_unverified_https"] is True
+    assert state.get("allow_unverified_https") is True
 
     assert RemoteAnisetteProvider.from_json(state)._http._ssl is False  # noqa: SLF001
 
@@ -130,20 +136,25 @@ def test_a_provider_presents_the_serial_it_was_given() -> None:
         """The base header assembly, with nothing fetched from anywhere."""
 
         @property
+        @override
         def otp(self) -> str:
             return "otp"
 
         @property
+        @override
         def machine(self) -> str:
             return "machine"
 
+        @override
         async def close(self) -> None:
             return
 
+        @override
         def to_json(self, dst=None):  # noqa: ANN001, ANN202, ARG002
             return {}
 
         @classmethod
+        @override
         def from_json(cls, val):  # noqa: ANN001, ANN206, ARG003
             raise NotImplementedError
 

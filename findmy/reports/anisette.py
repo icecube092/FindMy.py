@@ -212,7 +212,6 @@ Deliberately implausible as a real serial: nothing should mistake it for hardwar
 """
 
 
-
 class RemoteAnisetteMapping(TypedDict, total=False):
     """JSON mapping representing state of a remote Anisette provider."""
 

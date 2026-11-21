@@ -105,7 +105,7 @@ def test_a_longer_timeout_is_actually_waited_out(slow_server: str) -> None:
 
 
 def test_an_account_hands_its_timeout_to_the_requests_it_makes() -> None:
-    from tests.test_device_identity import a_provider
+    from test_device_identity import a_provider
 
     account = AsyncAppleAccount(a_provider(), timeout=30)
 
@@ -113,7 +113,7 @@ def test_an_account_hands_its_timeout_to_the_requests_it_makes() -> None:
 
 
 def test_the_sync_account_passes_it_through_too() -> None:
-    from tests.test_device_identity import a_provider
+    from test_device_identity import a_provider
 
     account = AppleAccount(a_provider(), timeout=30)
 
@@ -121,7 +121,7 @@ def test_the_sync_account_passes_it_through_too() -> None:
 
 
 def test_saying_nothing_leaves_every_caller_where_they_were() -> None:
-    from tests.test_device_identity import a_provider
+    from test_device_identity import a_provider
 
     assert HttpSession().timeout == DEFAULT_TIMEOUT
     assert AsyncAppleAccount(a_provider())._http.timeout == DEFAULT_TIMEOUT  # noqa: SLF001

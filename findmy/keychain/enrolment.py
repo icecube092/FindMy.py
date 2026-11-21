@@ -268,9 +268,7 @@ class PinnedRoots:
         version. A matcher that compared common names, or that dropped an attribute it did
         not recognise, would find four candidates and no way to choose between them.
         """
-        return [
-            root for root in self.by_version.values() if root.subject == certificate.issuer
-        ]
+        return [root for root in self.by_version.values() if root.subject == certificate.issuer]
 
 
 def _load_certificate(encoded: bytes) -> x509.Certificate:

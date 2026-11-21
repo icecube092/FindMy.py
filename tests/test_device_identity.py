@@ -11,6 +11,8 @@ from dataclasses import replace
 
 import pytest
 
+from typing_extensions import override
+
 from findmy import util
 from findmy.cloudkit.client import _ClientIdentity
 from findmy.reports.account import (
@@ -55,20 +57,25 @@ def a_provider(
 
     class Provider(BaseAnisetteProvider):
         @property
+        @override
         def otp(self) -> str:
             return "otp"
 
         @property
+        @override
         def machine(self) -> str:
             return "machine"
 
+        @override
         async def close(self) -> None:
             return
 
+        @override
         def to_json(self, dst=None):  # noqa: ANN001, ANN202, ARG002
             return {"type": "aniRemote", "url": "https://a/"}
 
         @classmethod
+        @override
         def from_json(cls, val):  # noqa: ANN001, ANN206
             raise NotImplementedError
 
@@ -258,6 +265,7 @@ def test_a_closable_that_never_finished_initializing_collects_quietly() -> None:
     # The half-built object every `Closable` subclass can produce: `__init__` raised
     # before `super().__init__()`, so `_loop` does not exist.
     class NeverBuilt(util.abc.Closable):
+        @override
         async def close(self) -> None:
             raise AssertionError
 

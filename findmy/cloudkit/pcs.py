@@ -1411,11 +1411,7 @@ def keyset_hash_framing(keyset: der.DerElement) -> str | None:  # noqa: PLR0911
 
     # Handed the wrapper: the checksum lives in the SEQUENCE inside it, and the bytes
     # covered are the whole wrapper.
-    if (
-        keyset.tag_class == der.CLASS_APPLICATION
-        and len(members) == 1
-        and members[0].constructed
-    ):
+    if keyset.tag_class == der.CLASS_APPLICATION and len(members) == 1 and members[0].constructed:
         inner = members[0]
         digest = _trailing_digest(inner)
         if digest is None:
