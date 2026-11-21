@@ -71,6 +71,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import binascii
+import contextlib
 import getpass
 import logging
 import os
@@ -90,6 +92,7 @@ from findmy.keychain.session import AsyncKeychainSession
 ANISETTE_SERVER = None
 ANISETTE_LIBS_PATH = "ani_libs.bin"
 ACCOUNT_STORE = "account.json"
+
 
 def _red(text: str) -> str:
     """
@@ -143,10 +146,9 @@ def _match(value: object, needles: dict[str, bytes]) -> str | None:
         blobs.append(bytes(value))
     elif isinstance(value, str):
         blobs.append(value.encode())
-        try:
+        # Not base64 raises; the ASCII form was already searched.
+        with contextlib.suppress(binascii.Error, ValueError):
             blobs.append(base64.b64decode(value, validate=True))
-        except Exception:
-            pass  # not base64; the ASCII form was already searched
 
     for blob in blobs:
         for label, needle in needles.items():
@@ -156,7 +158,10 @@ def _match(value: object, needles: dict[str, bytes]) -> str | None:
 
 
 async def sweep(
-    account, session: AsyncKeychainSession, peer, hex_needle: str
+    account,  # noqa: ANN001
+    session: AsyncKeychainSession,
+    peer,  # noqa: ANN001
+    hex_needle: str,
 ) -> dict[str, dict[bytes, dict]]:
     """
     Search every view the peer's shares open, and return the readable items.
@@ -200,7 +205,7 @@ async def sweep(
     return all_items
 
 
-def inspect(all_items: dict[str, dict[bytes, dict]]) -> None:
+def inspect(all_items: dict[str, dict[bytes, dict]]) -> None:  # noqa: C901
     """
     Interactive item inspector. The only place payload bytes reach the screen.
 
@@ -258,7 +263,7 @@ def inspect(all_items: dict[str, dict[bytes, dict]]) -> None:
             print(f"{field}: {value!r}")
 
 
-async def main() -> int:
+async def main() -> int:  # noqa: PLR0911
     """Sign in, recover, sweep, optionally inspect."""
     if not sys.stdin.isatty() or not sys.stdout.isatty():
         # The prompt below is not the gate -- this is. An agent or a script runs

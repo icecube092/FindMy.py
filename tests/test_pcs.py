@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import struct
+from typing import TYPE_CHECKING
 
 import pytest
 from cryptography.exceptions import InvalidTag
@@ -25,6 +26,9 @@ from cryptography.hazmat.primitives.keywrap import aes_key_wrap
 
 from findmy.cloudkit import der, pcs
 from findmy.cloudkit.der import DerError
+
+if TYPE_CHECKING:
+    from findmy.cloudkit.der import DerElement
 
 CONTEXT = pcs.FieldContext(
     zone_name="BeaconStore",
@@ -1426,7 +1430,7 @@ def a_keyset_body() -> bytes:
     )
 
 
-def a_framed_keyset(*, framing: str) -> object:
+def a_framed_keyset(*, framing: str) -> DerElement:
     """Build a keyset whose checksum covers one framing or the other."""
     import hashlib  # noqa: PLC0415
 

@@ -1,3 +1,6 @@
+# Test doubles stand in for the real clients, accounts and sessions by shape, and tests read
+# back what they recorded, so these two checks would flag every injection.
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false
 """Tests for turning decrypted records into accessories (Stage 6)."""
 
 from __future__ import annotations

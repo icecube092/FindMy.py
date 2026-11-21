@@ -278,9 +278,7 @@ def _describe_announce_failure(resp: util.http.HttpResponse) -> str:
         parts.append(f"body {text[:500]!r}" if text else "an empty body")
 
     explanatory = {
-        name: value
-        for name, value in resp.headers.items()
-        if name.lower() in _EXPLANATORY_HEADERS
+        name: value for name, value in resp.headers.items() if name.lower() in _EXPLANATORY_HEADERS
     }
     if explanatory:
         parts.append(f"headers {explanatory!r}")
@@ -1730,13 +1728,10 @@ class AsyncAppleAccount(BaseAppleAccount):
             # reaches the service and is answered properly.
             #
             # Reproducible without an account, and worth re-running before believing any
-            # theory about this:
-            #
-            #     curl -so /dev/null -w '%{http_code}\n' -X POST --data-binary t \
-            #       -H 'X-MMe-Client-Info: <Mac14,2> <macOS;15.7.5;24G624> <com.apple.AuthKit/1 (com.apple.dt.Xcode/3594.4.19)>' \
-            #       https://gsa.apple.com/grandslam/GsService2      # 503
-            #
-            #     ... (com.apple.akd/1.0)> ...                      # 401, i.e. it arrived
+            # theory about this: POST any body to gsa.apple.com/grandslam/GsService2 with
+            # `X-MMe-Client-Info: <Mac14,2> <macOS;15.7.5;24G624> <com.apple.AuthKit/1
+            # (com.apple.dt.Xcode/3594.4.19)>` and the answer is 503; with
+            # `(com.apple.akd/1.0)` as the last part it is 401, i.e. the request arrived.
             #
             # Diagnosed by AltStore (altstoreio/AltStore#1790, shipped in AltServer
             # 1.7.6); the same block took out SideStore, Macless Haystack, OpenBubbles

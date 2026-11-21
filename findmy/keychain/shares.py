@@ -267,10 +267,7 @@ def sfies_parts(archive: bytes) -> SfiesParts:
     code = find(_MEMBER_CODE)
 
     if point is None or ciphertext is None or code is None:
-        msg = (
-            "This archive is not an SFIESCiphertext: it holds"
-            f" {describe_archive(archive)}"
-        )
+        msg = f"This archive is not an SFIESCiphertext: it holds {describe_archive(archive)}"
         raise ShareError(msg)
 
     overrun = len(point) + len(code)
