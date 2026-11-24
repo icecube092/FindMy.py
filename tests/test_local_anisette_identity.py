@@ -25,6 +25,12 @@ _T = TypeVar("_T")
 _DEVICE_ID = "12345678-1234-5678-1234-567812345678"
 _PLATFORM = "<MacBookPro16,2> <macOS;26.0;25A354>"
 _CLIENT_INFO = f"{_PLATFORM} <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
+# Что провайдер ОТДАЁТ наружу: akd именует ОС "Mac OS X", а не "macOS". С 2026-11-20
+# edge Grand Slam режет "macOS;" HTTP 503 (см. anisette._akd_os_name). Модель/версия/билд
+# не меняются, поэтому для кросс-проверки Apple это та же машина; на вход сеанс по-прежнему
+# присылает "macOS" (_CLIENT_INFO выше).
+_PLATFORM_AKD = "<MacBookPro16,2> <Mac OS X;26.0;25A354>"
+_CLIENT_INFO_AKD = f"{_PLATFORM_AKD} <com.apple.AuthKit/1 (com.apple.akd/1.0)>"
 _USER_AGENT = "akd/1.0 CFNetwork/3860.100.1 Darwin/25.0.0"
 _MAC_HEADERS = {
     "X-Apple-I-Client-Time": "2026-10-18T10:00:00Z",
@@ -119,9 +125,9 @@ def test_local_provider_preserves_device_headers() -> None:
         if name.lower() != "x-mme-client-info":
             assert headers[name] == value
     assert [value for name, value in headers.items() if name.lower() == "x-mme-client-info"] == [
-        f"{_PLATFORM} <com.apple.AOSKit/282 (com.apple.dt.Xcode/3594.4.19)>"
+        f"{_PLATFORM_AKD} <com.apple.AOSKit/282 (com.apple.dt.Xcode/3594.4.19)>"
     ]
-    assert provider.client == _CLIENT_INFO
+    assert provider.client == _CLIENT_INFO_AKD
 
 
 def test_gsa_request_uses_local_anisette_identity() -> None:
@@ -164,7 +170,7 @@ def test_gsa_request_uses_local_anisette_identity() -> None:
     cpd = sent["request"]["cpd"]
     assert cpd["X-Apple-I-MD-LU"] == _MAC_HEADERS["X-Apple-I-MD-LU"]
     assert cpd["X-Mme-Device-Id"] == _DEVICE_ID
-    assert sent["headers"]["X-MMe-Client-Info"] == _CLIENT_INFO
+    assert sent["headers"]["X-MMe-Client-Info"] == _CLIENT_INFO_AKD
     assert not any(name.lower() == "x-mme-client-info" for name in cpd)
 
 
@@ -224,9 +230,9 @@ def test_2fa_and_mobileme_use_one_client_info_for_the_local_mac() -> None:
         asyncio.run(run())
 
     expected = [
-        _CLIENT_INFO,
-        f"{_PLATFORM} <com.apple.AOSKit/282 (com.apple.dt.Xcode/3594.4.19)>",
-        f"{_PLATFORM} <com.apple.AOSKit/282 (com.apple.accountsd/113)>",
+        _CLIENT_INFO_AKD,
+        f"{_PLATFORM_AKD} <com.apple.AOSKit/282 (com.apple.dt.Xcode/3594.4.19)>",
+        f"{_PLATFORM_AKD} <com.apple.AOSKit/282 (com.apple.accountsd/113)>",
     ]
     for headers, client_info in zip(sent, expected, strict=True):
         assert [
@@ -301,14 +307,14 @@ def test_identity_follows_the_local_anisette_session() -> None:
     identity = provider.identity
 
     assert identity.model == "MacBookPro16,2"
-    assert identity.os_name == "macOS"
+    assert identity.os_name == "Mac OS X"
     assert identity.os_version == "26.0"
     assert identity.os_build == "25A354"
     assert identity.cfnetwork == "3860.100.1"
     assert identity.darwin == "25.0.0"
     # The composites every consumer builds from it follow without further wiring.
     assert identity.client_info("com.apple.lakitu") == (
-        "<MacBookPro16,2> <macOS;26.0;25A354> <com.apple.lakitu>"
+        "<MacBookPro16,2> <Mac OS X;26.0;25A354> <com.apple.lakitu>"
     )
     assert identity.user_agent("sbd/1.0") == "sbd/1.0 CFNetwork/3860.100.1 Darwin/25.0.0"
 

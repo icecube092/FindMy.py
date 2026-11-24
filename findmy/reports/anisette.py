@@ -218,6 +218,21 @@ Deliberately implausible as a real serial: nothing should mistake it for hardwar
 
 
 
+def _akd_os_name(client_info: str) -> str:
+    """Normalise the OS name in a client-info string to the one akd actually sends.
+
+    akd names the OS ``Mac OS X`` even on modern macOS, but the macOS ADI session reports
+    it as ``macOS``. Since 2026-11-20 Grand Slam's edge refuses any POST whose
+    ``X-MMe-Client-Info`` contains ``macOS;`` with a bare HTTP 503, before it reads the
+    request at all; the escrow proxy and CloudKit expect the same legacy spelling.
+    Everything that takes the OS name from the session passes it through here, so one
+    machine is described with the name akd uses everywhere. The version and build are left
+    untouched, so the machine Apple cross-checks stays the same one (see
+    :func:`_identity_from_session`).
+    """
+    return (client_info or "").replace("<macOS;", "<Mac OS X;")
+
+
 _CLIENT_INFO_RE = re.compile(r"^<([^>]+)>\s*<([^;>]+);([^;>]+);([^>]+)>")
 _USER_AGENT_RE = re.compile(r"CFNetwork/(\S+)\s+Darwin/(\S+)")
 
@@ -233,7 +248,7 @@ def _identity_from_session(client_info: str, user_agent: str) -> DeviceIdentity 
     unexpectedly, so a caller can keep its configured identity rather than a half-parsed
     one.
     """
-    info = _CLIENT_INFO_RE.match(client_info or "")
+    info = _CLIENT_INFO_RE.match(_akd_os_name(client_info))
     agent = _USER_AGENT_RE.search(user_agent or "")
     if info is None or agent is None:
         return None
@@ -871,7 +886,7 @@ class LocalAnisetteProvider(BaseAnisetteProvider, util.abc.Serializable[LocalAni
     @override
     def client(self) -> str:
         """Use the client identity supplied by the local Anisette session."""
-        return (self._ani_data or {}).get("X-MMe-Client-Info", super().client)
+        return _akd_os_name((self._ani_data or {}).get("X-MMe-Client-Info", super().client))
 
     @property
     @override
