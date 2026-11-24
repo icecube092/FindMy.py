@@ -535,8 +535,7 @@ async def fetch_view(
     :param continuation_token: Resume an earlier fetch. Keep one per zone.
     """
     changes = [
-        change
-        async for change in client.iter_records(view, continuation_token=continuation_token)
+        change async for change in client.iter_records(view, continuation_token=continuation_token)
     ]
     return split_view_records(records_from_changes(changes, view))
 

@@ -91,6 +91,24 @@ _NEVER_LOGGED = frozenset(
 )
 
 
+def _normalize_2fa_status(status: dict[str, Any]) -> None:
+    """
+    Read Grand Slam's ``hsc`` 409 with no ``au`` as the trusted-device challenge it is.
+
+    Since 2026-10-12 a password Apple accepts but wants a code for is answered at the SRP
+    ``complete`` step with ``hsc`` 409 and no ``au``. ``au`` is what decides whether a second
+    factor is needed, so without this the sign-in is taken as finished, the code is never asked
+    for, and the ``mobileme`` delegate login after it fails with ``status=1``. Reported in
+    malmeloo/FindMy.py#278 and OpenTagViewer#248; malmeloo/FindMy.py#279 makes the same change,
+    under the same name, and sacca97/os-findmy-e signs in this way.
+
+    Anything else is left as Apple sent it, including a 409 that does name ``au``.
+    """
+    if status.get("hsc") == 409 and not status.get("au"):
+        logger.info("Grand Slam answered hsc 409 with no au: treating it as a second factor")
+        status["au"] = "trustedDeviceSecondaryAuth"
+
+
 def _refused(
     response: util.http.HttpResponse,
     sent: Mapping[str, str],
@@ -266,9 +284,7 @@ def _describe_announce_failure(resp: util.http.HttpResponse) -> str:
         parts.append(f"body {text[:500]!r}" if text else "an empty body")
 
     explanatory = {
-        name: value
-        for name, value in resp.headers.items()
-        if name.lower() in _EXPLANATORY_HEADERS
+        name: value for name, value in resp.headers.items() if name.lower() in _EXPLANATORY_HEADERS
     }
     if explanatory:
         parts.append(f"headers {explanatory!r}")
@@ -1739,13 +1755,10 @@ class AsyncAppleAccount(BaseAppleAccount):
             # reaches the service and is answered properly.
             #
             # Reproducible without an account, and worth re-running before believing any
-            # theory about this:
-            #
-            #     curl -so /dev/null -w '%{http_code}\n' -X POST --data-binary t \
-            #       -H 'X-MMe-Client-Info: <Mac14,2> <macOS;15.7.5;24G624> <com.apple.AuthKit/1 (com.apple.dt.Xcode/3594.4.19)>' \
-            #       https://gsa.apple.com/grandslam/GsService2      # 503
-            #
-            #     ... (com.apple.akd/1.0)> ...                      # 401, i.e. it arrived
+            # theory about this: POST any body to gsa.apple.com/grandslam/GsService2 with
+            # `X-MMe-Client-Info: <Mac14,2> <macOS;15.7.5;24G624> <com.apple.AuthKit/1
+            # (com.apple.dt.Xcode/3594.4.19)>` and the answer is 503; with
+            # `(com.apple.akd/1.0)` as the last part it is 401, i.e. the request arrived.
             #
             # Diagnosed by AltStore (altstoreio/AltStore#1790, shipped in AltServer
             # 1.7.6); the same block took out SideStore, Macless Haystack, OpenBubbles

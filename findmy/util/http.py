@@ -260,7 +260,9 @@ class HttpSession(Closable):
                     **options,
                 ) as r:
                     return HttpResponse(r.status, await r.content.read(), dict(r.headers))
-            except TimeoutError as e:  # noqa: PERF203
+            # `asyncio.TimeoutError` is what `aiohttp` raises, and is only the builtin from
+            # 3.11 on: catching `TimeoutError` alone let 3.10 through undescribed.
+            except (TimeoutError, asyncio.TimeoutError) as e:  # noqa: PERF203
                 # `aiohttp` raises this rather than a `ClientError`, so it is neither
                 # retried nor described: a login that outran the clock arrives as a bare
                 # `TimeoutError` naming nothing. Say what did not answer and what the

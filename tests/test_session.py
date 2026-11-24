@@ -1,3 +1,6 @@
+# Test doubles stand in for the real clients, accounts and sessions by shape, and tests read
+# back what they recorded, so these two checks would flag every injection.
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false
 """Tests for the keychain session facade."""
 
 from __future__ import annotations
@@ -427,7 +430,7 @@ def _prepare_club(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         PinnedRoots,
         "bundled",
-        classmethod(lambda cls: cls.load([root.public_bytes(serialization.Encoding.DER)])),
+        classmethod(lambda _cls: PinnedRoots.load([root.public_bytes(serialization.Encoding.DER)])),
     )
 
 

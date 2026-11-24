@@ -216,8 +216,6 @@ Deliberately implausible as a real serial: nothing should mistake it for hardwar
 """
 
 
-
-
 def _akd_os_name(client_info: str) -> str:
     """Normalise the OS name in a client-info string to the one akd actually sends.
 
@@ -262,6 +260,7 @@ def _identity_from_session(client_info: str, user_agent: str) -> DeviceIdentity 
         cfnetwork=cfnetwork,
         darwin=darwin,
     )
+
 
 class RemoteAnisetteMapping(TypedDict, total=False):
     """JSON mapping representing state of a remote Anisette provider."""

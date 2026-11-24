@@ -1,3 +1,6 @@
+# Test doubles stand in for the real clients, accounts and sessions by shape, and tests read
+# back what they recorded, so these two checks would flag every injection.
+# pyright: reportArgumentType=false, reportAttributeAccessIssue=false
 """
 Tests for the trust-circle directory (Stage 3 §5.3).
 
